@@ -2,7 +2,10 @@ import math
 import numpy as np
 from scipy.special import binom
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib as mpl
 import pickle
+import sys
 import glob
 
 bernstein = lambda n, k, t: binom(n, k) * t**k * (1.-t)**(n-k)
