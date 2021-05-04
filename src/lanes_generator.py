@@ -182,12 +182,17 @@ def generate_shape():
 
     return shape
 
-
+# The path to the shape dir depends on your project structure
+# The current structure is:
+# |--shapes/
+# |--src/\
+#     |--lanes_generator.py
+# Feel free to revert to ./shapes/shape_
 def save_shape(shape):
-    shapes = glob.glob('./shapes/shape_*')
+    shapes = glob.glob('../shapes/shape_*')
     shapes_counter = len(shapes)
 
-    filename = './shapes/shape_' + str(shapes_counter)
+    filename = '../shapes/shape_' + str(shapes_counter)
     outfile = open(filename,'wb')
 
     pickle.dump(shape, outfile)

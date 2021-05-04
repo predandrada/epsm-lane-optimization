@@ -1,10 +1,10 @@
 import cvxpy as cp
 import numpy as np
-import pickle
 import glob
-import matplotlib.pyplot as plt
 import math
 import mosek
+from lanes_generator import plot_shape, read_shape
+
 
 de = 1.0  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
 dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
@@ -15,39 +15,6 @@ wt = 3  # Angle cost weight #TODO this should be changed too
 wb = 5  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
-
-
-# Taken from lanes_generator to plot a given shape
-def plot_shape(shape):
-    fig, ax = plt.subplots()
-    ax.set_aspect("equal")
-
-    x = shape['x_curve']
-    y = shape['y_curve']
-
-    plt.plot(x, y)
-
-    inner_lanes = shape['inner_lanes']
-    outer_lanes = shape['outer_lanes']
-
-    x = [xi for xi, _ in outer_lanes]
-    y = [yi for _, yi in outer_lanes]
-    plt.plot(x, y, 'go')
-
-    x = [xi for xi, _ in inner_lanes]
-    y = [yi for _, yi in inner_lanes]
-    plt.plot(x, y, 'go')
-
-    plt.show()
-
-
-# Read a shape from the filename; the shape was saved previously using the lanes_generator
-def read_shape(filename):
-    infile = open(filename, 'rb')
-    shape = pickle.load(infile)
-    infile.close()
-
-    return shape
 
 
 # Extract the cones as an array of pairs (x, y) from the given shape
@@ -146,9 +113,8 @@ def angle(c1, c2, c3):
 def compute_distance_matrix(cones):
     n = len(cones)
     D = np.zeros((n, n))
-    for i in range(n):
-        for j in range(n):
-            D[i][j] = euclidean_distance(cones[i], cones[j])
+    for i, j in zip(range(n), range(n)):
+        D[i][j] = euclidean_distance(cones[i], cones[j])
     return D
 
 
@@ -213,6 +179,7 @@ def lane_detection(cones):
 
                     constraints.append(2 * f[ijk] - a[ji] - a[jk] <= 0)
                     constraints.append(f[ijk] - a[ji] - a[jk] >= -1)
+                    # print(constraints)
 
     A = []
     for i in range(n):
@@ -230,7 +197,7 @@ def lane_detection(cones):
 
 
 def main():
-    shapes = glob.glob('./shapes/shape_*')
+    shapes = glob.glob('../shapes/shape_*')
     shapes_counter = len(shapes)
 
     ans = input("Which shape would you like to load?: ")
@@ -238,14 +205,15 @@ def main():
 
     if 0 <= shape_number <= shapes_counter:
         print('Loading shape ' + ans)
-        shape = read_shape('./shapes/shape_' + ans)
+        shape = read_shape('../shapes/shape_' + ans)
     else:
-        shape = read_shape('./shapes/shape_0')
+        shape = read_shape('../shapes/shape_0')
 
     # plot_shape(shape)
 
     # Cannot insert all the cones because it runs very slow
     cones = get_cones(shape)[0:10]
+    # print(cones)
 
     lane_detection(cones)  # What should be called in the end to obtain the result
 
