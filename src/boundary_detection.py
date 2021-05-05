@@ -186,6 +186,16 @@ def compute_angle_cost(cones):
     return np.array(t)
 
 
+# Returns a list of all subsets of a given set
+def powerset(s):
+    x = len(s)
+    p = []
+    for i in range(1 << x):
+        p += [[s[j] for j in range(x) if (i & (1 << j))]]
+
+    return p
+
+
 def lane_detection(cones):
     n = len(cones)
     na = int(0.5 * (n - 1) * n)  # Number of elements of a
@@ -239,15 +249,14 @@ def lane_detection(cones):
     constraints.append(0.5 * cp.sum([A[i] for i in range(n)]) <= cp.sum([g[i] for i in range(n)]) - 2)
 
     # to guarantee a lane graph
-    cone_set = cones.copy()
-    subsets = distinct_combinations(cone_set, 2)
+    cone_set = [i for i in range(n)]
+    subsets = powerset(cone_set)
 
-    # something fishy here
+    # something fishy here - changed
     for s in subsets:
-        cardinal = len(s)
-        # for i in range(cardinal):
-        # set_sum = cp.sum(a[get_idx(i, j, n)] for j in range(i + 1, cardinal))
-        # constraints.append(set_sum <= cardinal - 1)
+        for i in s:
+            set_sum = cp.sum([a[get_idx(i, j, n)] if i != j else 0 for j in s])
+            constraints.append(set_sum <= len(s) - 1)
 
     # pairwise edge constraints
     for i, j in zip(range(n), range(n)):
@@ -280,7 +289,6 @@ def plot_boundary(a, shape):
         for i in range(j + 1, n):
             idx = get_idx(i, j, n)
             if a[idx] == 1:
-                print(i, j, idx)
                 xi, yi = cones[i]
                 xj, yj = cones[j]
 
