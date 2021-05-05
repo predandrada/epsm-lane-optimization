@@ -15,6 +15,7 @@ wt = 3  # Angle cost weight #TODO this should be changed too
 wb = 5  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
+dmin = 3  # Minimum width
 
 
 ## Returns the coordinates of the center of an edge
@@ -27,41 +28,34 @@ def line_center(ci, cj):
 def end_dist(s1, s2):
     if s1 is None or s2 is None:
         return None
-    current_min = 999
 
-    # there are 6 cases to be taken into consideration:
-    # 4 for each of the cones and 2 to eliminate invalid minimum distances
-    # 1
-    current_min = get_min_dist(s1[0], s2[0], current_min)
-    # 2
-    current_min = get_min_dist(s1[1], s2[1], current_min)
-    # 3
-    current_min = get_min_dist(s1[0], s2[1], current_min)
-    # 4
-    current_min = get_min_dist(s1[1], s2[0], current_min)
+    values = []
 
-    # 5
-    center = line_center(s1[0], s1[1])
-    if current_min > get_min_dist(center, s2[0], current_min):
-        return 0
+    # there are 8 cases to be taken into consideration:
+    # 4 for endpoints + 4 for invalid minimums
+    # 1 - 4
+    for i in s1:
+        for j in s2:
+            values.append(euclidean_distance(i, j))
 
-    # 6
-    center = line_center(s2[0], s2[1])
-    if current_min > get_min_dist(s1[0], center, current_min):
-        return 0
+    current_min = min(values)
+
+    # 5 - 8
+    center1 = line_center(s1[0], s1[1])
+    center2 = line_center(s2[0], s2[1])
+    for i in s1:
+        if euclidean_distance(center1, i) < current_min:
+            return 0
+    for j in s2:
+        if euclidean_distance(center2, j) < current_min:
+            return 0
 
     return 1
 
 
-# Helper function for computing the new minimum
-def get_min_dist(ci, cj, val):
-    temp = euclidean_distance(ci, cj)
-    return temp if temp < val else val
-
-
 # Extract the cones as an array of pairs (x, y) from the given shape
 # Both inner cones and outer cones are in the same array, hence the algorithm
-# does not differentiate between them
+# does n    ot differentiate between them
 def get_cones(shape):
     return shape['inner_lanes'] + shape['outer_lanes']
 
@@ -237,12 +231,21 @@ def lane_detection(cones):
     cone_set = cones.copy()
     subsets = distinct_combinations(cone_set, 2)
 
+    # something fishy here
     for s in subsets:
         cardinal = len(s)
-        for i in range(cardinal):
-            set_sum = cp.sum(a[get_idx(i, j, n)] for j in range(i + 1, cardinal))
-                constraints.append(set_sum <= cardinal - 1)
+        # for i in range(cardinal):
+        # set_sum = cp.sum(a[get_idx(i, j, n)] for j in range(i + 1, cardinal))
+        # constraints.append(set_sum <= cardinal - 1)
 
+    # pairwise edge constraints
+    for i, j in zip(range(n), range(n)):
+        for k, l in zip(range(n), range(n)):
+            if k != (i or j) and l != (i or j):
+                ij = get_idx(i, j, n)
+                kl = get_idx(k, l, n)
+                constraints.append(a[ij] + a[kl] <= 1)
+                constraints.append(get_distance(a[ij], a[kl]))
 
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
