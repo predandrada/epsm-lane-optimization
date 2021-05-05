@@ -4,6 +4,7 @@ import glob
 import math
 import mosek
 from lanes_generator import plot_shape, read_shape
+from more_itertools import distinct_combinations
 
 de = 1.0  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
 dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
@@ -227,6 +228,21 @@ def lane_detection(cones):
         A.append(Ai)
         constraints.append(g[i] - Ai <= 0)
         constraints.append(1 / 2 * Ai - g[i] <= 0)
+
+        # to ensure there are at least 2 disjoint subgraphs
+        temp = cp.sum(g, axis=0)
+        constraints.append(0.5 * Ai - temp <= 2)
+
+    # to guarantee a lane graph
+    cone_set = cones.copy()
+    subsets = distinct_combinations(cone_set, 2)
+
+    for s in subsets:
+        cardinal = len(s)
+        for i in range(cardinal):
+            set_sum = cp.sum(a[get_idx(i, j, n)] for j in range(i + 1, cardinal))
+                constraints.append(set_sum <= cardinal - 1)
+
 
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
