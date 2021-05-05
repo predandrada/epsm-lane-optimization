@@ -5,16 +5,57 @@ import math
 import mosek
 from lanes_generator import plot_shape, read_shape
 
-
 de = 1.0  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
 dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
 theta_e = math.pi  # Expected angle between two adjacent edges; setting it to pi proved to be effective
-theta_t = 3/4 * math.pi  # TODO Maybe it should be changed too
+theta_t = 3 / 4 * math.pi  # TODO Maybe it should be changed too
 ws = 3  # Spacing weight #TODO This should be changed too
 wt = 3  # Angle cost weight #TODO this should be changed too
 wb = 5  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
+
+
+## Returns the coordinates of the center of an edge
+def line_center(ci, cj):
+    return zip((ci[0] + cj[0]) * 0.5, (ci[1] + cj[1]) * 0.5)
+
+
+## Returns 1 if the minimum euclidean distance connects the endpoints of 2 segments, 0 otherwise
+## See https://imgur.com/a/FGTWzrC for a visual interpretation
+def end_dist(s1, s2):
+    if s1 is None or s2 is None:
+        return None
+    current_min = 999
+
+    # there are 6 cases to be taken into consideration:
+    # 4 for each of the cones and 2 to eliminate invalid minimum distances
+    # 1
+    current_min = get_min_dist(s1[0], s2[0], current_min)
+    # 2
+    current_min = get_min_dist(s1[1], s2[1], current_min)
+    # 3
+    current_min = get_min_dist(s1[0], s2[1], current_min)
+    # 4
+    current_min = get_min_dist(s1[1], s2[0], current_min)
+
+    # 5
+    center = line_center(s1[0], s1[1])
+    if current_min > get_min_dist(center, s2[0], current_min):
+        return 0
+
+    # 6
+    center = line_center(s2[0], s2[1])
+    if current_min > get_min_dist(s1[0], center, current_min):
+        return 0
+
+    return 1
+
+
+# Helper function for computing the new minimum
+def get_min_dist(ci, cj, val):
+    temp = euclidean_distance(ci, cj)
+    return temp if temp < val else val
 
 
 # Extract the cones as an array of pairs (x, y) from the given shape
@@ -159,9 +200,9 @@ def lane_detection(cones):
     j.reshape(na, 1)
     t.reshape(nf, 1)
 
-    a = cp.Variable((na, ), boolean=True)
-    f = cp.Variable((nf, ), boolean=True)
-    g = cp.Variable((n, ), boolean=True)
+    a = cp.Variable((na,), boolean=True)
+    f = cp.Variable((nf,), boolean=True)
+    g = cp.Variable((n,), boolean=True)
 
     # The objective is to minimize the cost function
     objective = cp.Minimize((ws * s + wb * j).T @ a + wt * t.T @ f)
@@ -179,7 +220,6 @@ def lane_detection(cones):
 
                     constraints.append(2 * f[ijk] - a[ji] - a[jk] <= 0)
                     constraints.append(f[ijk] - a[ji] - a[jk] >= -1)
-                    # print(constraints)
 
     A = []
     for i in range(n):
