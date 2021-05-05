@@ -241,11 +241,11 @@ def lane_detection(cones):
     # pairwise edge constraints
     for i, j in zip(range(n), range(n)):
         for k, l in zip(range(n), range(n)):
-            if k != (i or j) and l != (i or j):
+            if k != (i or j) and l != (i or j) and k != l:
                 ij = get_idx(i, j, n)
                 kl = get_idx(k, l, n)
                 constraints.append(a[ij] + a[kl] <= 1)
-                constraints.append(get_distance(a[ij], a[kl]))
+                constraints.append(euclidean_distance(zip(i, j), zip(k, l)) > dmin and end_dist(zip(i, j), zip(k, l)))
 
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
