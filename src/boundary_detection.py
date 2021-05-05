@@ -1,5 +1,6 @@
 import cvxpy as cp
 import numpy as np
+import matplotlib.pyplot as plt
 import glob
 import math
 import mosek
@@ -10,13 +11,14 @@ de = 1.0  # Expected spacing between cones #TODO Should be changed based on the 
 dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
 theta_e = math.pi  # Expected angle between two adjacent edges; setting it to pi proved to be effective
 theta_t = 3 / 4 * math.pi  # TODO Maybe it should be changed too
-ws = 3  # Spacing weight #TODO This should be changed too
-wt = 3  # Angle cost weight #TODO this should be changed too
-wb = 5  # Uniform benefit of adding an edge
+ws = 2  # Spacing weight #TODO This should be changed too
+wt = 2  # Angle cost weight #TODO this should be changed too
+wb = 10  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
 dmin = 3  # Minimum width
 
+NUM_CONES = 10  # Bubuie daca e mai mare de 10 si nu stiu de ce
 
 ## Returns the coordinates of the center of an edge
 def line_center(ci, cj):
@@ -53,11 +55,19 @@ def end_dist(s1, s2):
     return 1
 
 
-# Extract the cones as an array of pairs (x, y) from the given shape
+# Extract the cones as an array of pairs (x, y) from the given shape.
 # Both inner cones and outer cones are in the same array, hence the algorithm
-# does n    ot differentiate between them
+# does not differentiate between them.
+# We take one inner lane cone and one outer lane cone to ensure that cones are taken from both paths. This is not
+# required if we would have been used all the lanes, but is very time-consuming so we use only NUM_CONES.
 def get_cones(shape):
-    return shape['inner_lanes'] + shape['outer_lanes']
+    inner_lanes = shape['inner_lanes']
+    outer_lanes = shape['outer_lanes']
+    cones = []
+    for i in range(len(inner_lanes)):
+        cones.append(inner_lanes[i])
+        cones.append(outer_lanes[i])
+    return cones
 
 
 # Returns the vectorized representation of the lower triangular portion of matrix M in column-major order
@@ -200,7 +210,7 @@ def lane_detection(cones):
     g = cp.Variable((n,), boolean=True)
 
     # The objective is to minimize the cost function
-    objective = cp.Minimize((ws * s + wb * j).T @ a + wt * t.T @ f)
+    objective = cp.Minimize((ws * s - wb * j).T @ a + wt * t.T @ f)
 
     # Cost Constraints
     constraints = [cp.multiply(sc, a) <= np.ones(na), cp.multiply(tc, f) <= np.ones(nf)]
@@ -218,14 +228,15 @@ def lane_detection(cones):
 
     A = []
     for i in range(n):
-        Ai = cp.sum([a[get_idx(j, i, n)] for j in range(i + 1, n)])
+        Ai = cp.sum([a[get_idx(j, i, n)] if i != j else 0 for j in range(n)])
         A.append(Ai)
         constraints.append(g[i] - Ai <= 0)
         constraints.append(1 / 2 * Ai - g[i] <= 0)
 
-        # to ensure there are at least 2 disjoint subgraphs
-        temp = cp.sum(g, axis=0)
-        constraints.append(0.5 * Ai - temp <= 2)
+    constraints.append(cp.sum([A[i] - 2 * g[i] for i in range(n)]) == -4)
+
+    # To ensure there are at least 2 disjoint subgraphs
+    constraints.append(0.5 * cp.sum([A[i] for i in range(n)]) <= cp.sum([g[i] for i in range(n)]) - 2)
 
     # to guarantee a lane graph
     cone_set = cones.copy()
@@ -254,6 +265,45 @@ def lane_detection(cones):
     print("optimal value", problem.value)
     print("optimal var", a.value)
 
+    return np.copy(a.value)
+
+
+def plot_boundary(a, shape):
+    print('a', a)
+    fig, ax = plt.subplots()
+    ax.set_aspect("equal")
+
+    cones = get_cones(shape)[:NUM_CONES]
+    n = len(cones)
+
+    for j in range(n):
+        for i in range(j + 1, n):
+            idx = get_idx(i, j, n)
+            if a[idx] == 1:
+                print(i, j, idx)
+                xi, yi = cones[i]
+                xj, yj = cones[j]
+
+                plt.plot([xi, xj], [yi, yj], 'k-')
+
+    x = shape['x_curve']
+    y = shape['y_curve']
+
+    plt.plot(x, y)
+
+    inner_lanes = shape['inner_lanes']
+    outer_lanes = shape['outer_lanes']
+
+    x = [xi for xi, _ in outer_lanes]
+    y = [yi for _, yi in outer_lanes]
+    plt.plot(x, y, 'go')
+
+    x = [xi for xi, _ in inner_lanes]
+    y = [yi for _, yi in inner_lanes]
+    plt.plot(x, y, 'go')
+
+    plt.show()
+
 
 def main():
     shapes = glob.glob('../shapes/shape_*')
@@ -271,10 +321,12 @@ def main():
     # plot_shape(shape)
 
     # Cannot insert all the cones because it runs very slow
-    cones = get_cones(shape)[0:10]
+    cones = get_cones(shape)[0:NUM_CONES]
     # print(cones)
 
-    lane_detection(cones)  # What should be called in the end to obtain the result
+    a = lane_detection(cones)  # What should be called in the end to obtain the result
+
+    plot_boundary(a, shape)
 
 
 if __name__ == "__main__":
