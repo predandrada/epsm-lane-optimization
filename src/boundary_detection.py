@@ -16,13 +16,14 @@ wt = 2  # Angle cost weight #TODO this should be changed too
 wb = 10  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
-dmin = 3  # Minimum width
+dmin = 3  # Minimum width #TODO check if this is valid for our case
+d_near = 1.3 # Necessary for endpoint distance constraints #TODO check other values
 
 NUM_CONES = 10  # Bubuie daca e mai mare de 10 si nu stiu de ce
 
 ## Returns the coordinates of the center of an edge
 def line_center(ci, cj):
-    return zip((ci[0] + cj[0]) * 0.5, (ci[1] + cj[1]) * 0.5)
+    return [(ci[0] + cj[0]) * 0.5, (ci[1] + cj[1]) * 0.5]
 
 
 ## Returns 1 if the minimum euclidean distance connects the endpoints of 2 segments, 0 otherwise
@@ -250,7 +251,7 @@ def lane_detection(cones):
     # To ensure there are at least 2 disjoint subgraphs
     constraints.append(0.5 * cp.sum([A[i] for i in range(n)]) <= cp.sum([g[i] for i in range(n)]) - 2)
 
-    # to guarantee a lane graph
+    # To guarantee a lane graph
     cone_set = [i for i in range(n)]
     subsets = powerset(cone_set)
 
@@ -259,7 +260,7 @@ def lane_detection(cones):
             set_sum = cp.sum([a[get_idx(i, j, n)] if i != j else 0 for j in s])
             constraints.append(set_sum <= len(s) - 1)
 
-    # pairwise edge constraints
+    # Pairwise edge constraints
     for i, j in zip(range(n), range(n)):
         for k, l in zip(range(n), range(n)):
             if k != (i or j) and l != (i or j) and k != l:
@@ -267,6 +268,23 @@ def lane_detection(cones):
                 kl = get_idx(k, l, n)
                 constraints.append(a[ij] + a[kl] <= 1)
                 constraints.append(euclidean_distance(zip(i, j), zip(k, l)) > dmin and end_dist(zip(i, j), zip(k, l)))
+
+    # Endpoint distance constraints
+    m = []
+    for i in range(n):
+        tmp = cp.sum(-A[i] + 2 * g[i])   # A[i] is the degree of the i-th cone and g[i] = 1 for an inlier cone
+        m.append(tmp)
+
+    r = np.zeros(n)
+    for i in range(0, NUM_CONES, 2):
+        center = line_center(cones[i], cones[i + 1])
+        tmp_d = euclidean_distance(center, cones[i])
+        r[i] = r[i + 1] = 1 if euclidean_distance(center, cones[i]) > d_near else 0 # since we're using the center anyway
+
+    r[1] = r[4] = 1 # hardcoded atm
+    # this crashes, will solve tomorrow
+    # constraints.append(cp.multiply(np.transpose(r), m) - 2 == 0)
+
 
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
