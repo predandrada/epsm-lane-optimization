@@ -160,10 +160,11 @@ def compute_distance_matrix(cones):
     n = len(cones)
     D = np.zeros((n, n))
     for i, j in zip(range(n), range(n)):
+        # elementele lui D raman 0 for some reason --> this is a problem
         D[i][j] = euclidean_distance(cones[i], cones[j])
     return D
 
-
+# this will return a matrix containing the same value on all positions -- issue
 def compute_spacing_cost(D):
     s = np.zeros(D.shape)
     for i in range(D.shape[0]):
@@ -206,6 +207,7 @@ def lane_detection(cones):
     s = vectorize_matrix(compute_spacing_cost(D))  # s is the vectorized spacing cost
     t = compute_angle_cost(cones)  # t is the vectorized angle cost
 
+    # sc is always 1 -- issue
     sc = [1 if s[i] > s_crit else 0 for i in range(len(s))]
     tc = [1 if t[i] > t_crit else 0 for i in range(len(t))]
 
@@ -252,7 +254,6 @@ def lane_detection(cones):
     cone_set = [i for i in range(n)]
     subsets = powerset(cone_set)
 
-    # something fishy here - changed
     for s in subsets:
         for i in s:
             set_sum = cp.sum([a[get_idx(i, j, n)] if i != j else 0 for j in s])
