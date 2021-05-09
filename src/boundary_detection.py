@@ -12,14 +12,14 @@ dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the re
 theta_e = math.pi  # Expected angle between two adjacent edges; setting it to pi proved to be effective
 theta_t = 3 / 4 * math.pi  # TODO Maybe it should be changed too
 ws = 2  # Spacing weight #TODO This should be changed too
-wt = 5  # Angle cost weight #TODO this should be changed too
+wt = 10  # Angle cost weight #TODO this should be changed too
 wb = 15  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
 dmin = 1  # Minimum width #TODO check if this is valid for our case
-d_near = 1.3 # Necessary for endpoint distance constraints #TODO check other values
+d_near = 1.3  # Necessary for endpoint distance constraints #TODO check other values
 
-NUM_CONES = 6  # Bubuie daca e mai mare de 10 si nu stiu de ce
+NUM_CONES = 12  # Bubuie daca e mai mare de 10 si nu stiu de ce
 
 ## Returns the coordinates of the center of an edge
 def line_center(ci, cj):
@@ -331,7 +331,6 @@ def lane_detection(cones):
 
     t = compute_angle_cost(cones)  # t is the vectorized angle cost
 
-    # sc is always 1 -- actually it's not. it was prob because D was 0 due to the zip.
     sc = [1 if s[i] > s_crit else 0 for i in range(len(s))]
     tc = [1 if t[i] > t_crit else 0 for i in range(len(t))]
 
@@ -368,7 +367,7 @@ def lane_detection(cones):
         A.append(Ai)
         constraints.append(g[i] - Ai <= 0)
         constraints.append(0.5 * Ai - g[i] <= 0)
-        constraints.append(Ai <= 2)  # Added to guarantee that the degree is no greater than 2 -> still not working
+        constraints.append(Ai <= 2)
 
     constraints.append(cp.sum([A[i] - 2 * g[i] for i in range(n)]) == -4)
 
@@ -402,22 +401,6 @@ def lane_detection(cones):
                             if min_dist > dmin and End(pA, pB, cones[i], cones[j], cones[k], cones[l]) == 0:
                                 constraints.append(a[ij] + a[kl] <= 1)
 
-    # Endpoint distance constraints
-    m = []
-    for i in range(n):
-        tmp = cp.sum(-A[i] + 2 * g[i])   # A[i] is the degree of the i-th cone and g[i] = 1 for an inlier cone
-        m.append(tmp)
-
-    r = np.zeros(n)
-    for i in range(0, NUM_CONES, 2):
-        center = line_center(cones[i], cones[i + 1])
-        tmp_d = euclidean_distance(center, cones[i])
-        r[i] = r[i + 1] = 1 if euclidean_distance(center, cones[i]) > d_near else 0 # since we're using the center anyway
-
-    r[1] = r[4] = 1 # hardcoded atm
-    # this crashes, will solve tomorrow
-    # constraints.append(cp.multiply(np.transpose(r), m) - 2 == 0)
-
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
 
@@ -432,7 +415,7 @@ def plot_boundary(a, shape):
     fig, ax = plt.subplots()
     ax.set_aspect("equal")
 
-    cones = get_cones(shape)[:NUM_CONES]
+    cones = get_cones(shape)[10:NUM_CONES+10]
     n = len(cones)
 
     for j in range(n):
@@ -479,7 +462,7 @@ def main():
     # plot_shape(shape)
 
     # Cannot insert all the cones because it runs very slow
-    cones = get_cones(shape)[0:NUM_CONES]
+    cones = get_cones(shape)[10:NUM_CONES+10]
     # print(cones)
 
     a = lane_detection(cones)  # What should be called in the end to obtain the result
