@@ -12,14 +12,14 @@ dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the re
 theta_e = math.pi  # Expected angle between two adjacent edges; setting it to pi proved to be effective
 theta_t = 3 / 4 * math.pi  # TODO Maybe it should be changed too
 ws = 2  # Spacing weight #TODO This should be changed too
-wt = 2  # Angle cost weight #TODO this should be changed too
-wb = 10  # Uniform benefit of adding an edge
+wt = 5  # Angle cost weight #TODO this should be changed too
+wb = 15  # Uniform benefit of adding an edge
 s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
 t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
-dmin = 3  # Minimum width #TODO check if this is valid for our case
+dmin = 1  # Minimum width #TODO check if this is valid for our case
 d_near = 1.3 # Necessary for endpoint distance constraints #TODO check other values
 
-NUM_CONES = 10  # Bubuie daca e mai mare de 10 si nu stiu de ce
+NUM_CONES = 6  # Bubuie daca e mai mare de 10 si nu stiu de ce
 
 ## Returns the coordinates of the center of an edge
 def line_center(ci, cj):
@@ -160,12 +160,14 @@ def angle(c1, c2, c3):
 def compute_distance_matrix(cones):
     n = len(cones)
     D = np.zeros((n, n))
-    for i, j in zip(range(n), range(n)):
-        # elementele lui D raman 0 for some reason --> this is a problem
-        D[i][j] = euclidean_distance(cones[i], cones[j])
+    # The issue was because of the zip :).
+    for i in range(n):
+        for j in range(n):
+            D[i][j] = euclidean_distance(cones[i], cones[j])
     return D
 
-# this will return a matrix containing the same value on all positions -- issue
+
+# this will return a matrix containing the same value on all positions
 def compute_spacing_cost(D):
     s = np.zeros(D.shape)
     for i in range(D.shape[0]):
@@ -198,6 +200,126 @@ def powerset(s):
     return p
 
 
+# Returns the minimum distance between 2 segments. Used in Pairwise Edge Constraints
+# Taken from https://stackoverflow.com/questions/2824478/shortest-distance-between-two-line-segments
+def MinDist(a0, a1, b0, b1, clampAll=True, clampA0=True, clampA1=True, clampB0=True,
+                                clampB1=True):
+    ''' Given two lines defined by numpy.array pairs (a0,a1,b0,b1)
+        Return the closest points on each segment and their distance
+    '''
+    a0 = np.array(a0)
+    a1 = np.array(a1)
+    b0 = np.array(b0)
+    b1 = np.array(b1)
+
+    a0 = np.append(a0, 0)
+    a1 = np.append(a1, 0)
+    b0 = np.append(b0, 0)
+    b1 = np.append(b1, 0)
+
+    # If clampAll=True, set all clamps to True
+    if clampAll:
+        clampA0 = True
+        clampA1 = True
+        clampB0 = True
+        clampB1 = True
+
+    # Calculate denominator
+    A = a1 - a0
+    B = b1 - b0
+
+    magA = np.linalg.norm(A)
+    magB = np.linalg.norm(B)
+
+    _A = A / magA
+    _B = B / magB
+
+    cross = np.cross(_A, _B)
+    denom = np.linalg.norm(cross) ** 2
+
+    # If lines are parallel (denom=0) test if lines overlap.
+    # If they don't overlap then there is a closest point solution.
+    # If they do overlap, there are infinite closest positions, but there is a closest distance
+    if not denom:
+        d0 = np.dot(_A, (b0 - a0))
+
+        # Overlap only possible with clamping
+        if clampA0 or clampA1 or clampB0 or clampB1:
+            d1 = np.dot(_A, (b1 - a0))
+
+            # Is segment B before A?
+            if d0 <= 0 >= d1:
+                if clampA0 and clampB1:
+                    if np.absolute(d0) < np.absolute(d1):
+                        return a0, b0, np.linalg.norm(a0 - b0)
+                    return a0, b1, np.linalg.norm(a0 - b1)
+
+            # Is segment B after A?
+            elif d0 >= magA <= d1:
+                if clampA1 and clampB0:
+                    if np.absolute(d0) < np.absolute(d1):
+                        return a1, b0, np.linalg.norm(a1 - b0)
+                    return a1, b1, np.linalg.norm(a1 - b1)
+
+        # Segments overlap, return distance between parallel segments
+        return None, None, np.linalg.norm(((d0 * _A) + a0) - b0)
+
+    # Lines criss-cross: Calculate the projected closest points
+    t = (b0 - a0)
+    detA = np.linalg.det([t, _B, cross])
+    detB = np.linalg.det([t, _A, cross])
+
+    t0 = detA / denom
+    t1 = detB / denom
+
+    pA = a0 + (_A * t0)  # Projected closest point on segment A
+    pB = b0 + (_B * t1)  # Projected closest point on segment B
+
+    # Clamp projections
+    if clampA0 or clampA1 or clampB0 or clampB1:
+        if clampA0 and t0 < 0:
+            pA = a0
+        elif clampA1 and t0 > magA:
+            pA = a1
+
+        if clampB0 and t1 < 0:
+            pB = b0
+        elif clampB1 and t1 > magB:
+            pB = b1
+
+        # Clamp projection A
+        if (clampA0 and t0 < 0) or (clampA1 and t0 > magA):
+            dot = np.dot(_B, (pA - b0))
+            if clampB0 and dot < 0:
+                dot = 0
+            elif clampB1 and dot > magB:
+                dot = magB
+            pB = b0 + (_B * dot)
+
+        # Clamp projection B
+        if (clampB0 and t1 < 0) or (clampB1 and t1 > magB):
+            dot = np.dot(_A, (pB - a0))
+            if clampA0 and dot < 0:
+                dot = 0
+            elif clampA1 and dot > magA:
+                dot = magA
+            pA = a0 + (_A * dot)
+
+    return pA, pB, np.linalg.norm(pA - pB)
+
+
+def End(pA, pB, a0, a1, b0, b1):
+    a0 = np.array(a0)
+    a1 = np.array(a1)
+    b0 = np.array(b0)
+    b1 = np.array(b1)
+
+    if np.array_equal(pA, a0) or np.array_equal(pA, a1):
+        if np.array_equal(pB, b0) or np.array_equal(pB, b1):
+            return 1
+    return 0
+
+
 def lane_detection(cones):
     n = len(cones)
     na = int(0.5 * (n - 1) * n)  # Number of elements of a
@@ -206,9 +328,10 @@ def lane_detection(cones):
     D = compute_distance_matrix(cones)
 
     s = vectorize_matrix(compute_spacing_cost(D))  # s is the vectorized spacing cost
+
     t = compute_angle_cost(cones)  # t is the vectorized angle cost
 
-    # sc is always 1 -- issue
+    # sc is always 1 -- actually it's not. it was prob because D was 0 due to the zip.
     sc = [1 if s[i] > s_crit else 0 for i in range(len(s))]
     tc = [1 if t[i] > t_crit else 0 for i in range(len(t))]
 
@@ -244,7 +367,8 @@ def lane_detection(cones):
         Ai = cp.sum([a[get_idx(j, i, n)] if i != j else 0 for j in range(n)])
         A.append(Ai)
         constraints.append(g[i] - Ai <= 0)
-        constraints.append(1 / 2 * Ai - g[i] <= 0)
+        constraints.append(0.5 * Ai - g[i] <= 0)
+        constraints.append(Ai <= 2)  # Added to guarantee that the degree is no greater than 2 -> still not working
 
     constraints.append(cp.sum([A[i] - 2 * g[i] for i in range(n)]) == -4)
 
@@ -261,13 +385,22 @@ def lane_detection(cones):
             constraints.append(set_sum <= len(s) - 1)
 
     # Pairwise edge constraints
-    for i, j in zip(range(n), range(n)):
-        for k, l in zip(range(n), range(n)):
-            if k != (i or j) and l != (i or j) and k != l:
-                ij = get_idx(i, j, n)
-                kl = get_idx(k, l, n)
-                constraints.append(a[ij] + a[kl] <= 1)
-                constraints.append(euclidean_distance(zip(i, j), zip(k, l)) > dmin and end_dist(zip(i, j), zip(k, l)))
+    for i in range(n):
+        for j in range(i + 1, n):
+            for k in range(n):
+                for l in range(k + 1, n):
+                    if len({i, j, k, l}) == 4:
+                        ij = get_idx(i, j, n)
+                        kl = get_idx(k, l, n)
+
+                        pA, pB, min_dist = MinDist(cones[i], cones[j], cones[k], cones[l])
+
+                        if min_dist != 0:
+                            pA = pA[:2]
+                            pB = pB[:2]
+
+                            if min_dist > dmin and End(pA, pB, cones[i], cones[j], cones[k], cones[l]) == 0:
+                                constraints.append(a[ij] + a[kl] <= 1)
 
     # Endpoint distance constraints
     m = []
@@ -285,7 +418,6 @@ def lane_detection(cones):
     # this crashes, will solve tomorrow
     # constraints.append(cp.multiply(np.transpose(r), m) - 2 == 0)
 
-
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
 
@@ -297,7 +429,6 @@ def lane_detection(cones):
 
 
 def plot_boundary(a, shape):
-    print('a', a)
     fig, ax = plt.subplots()
     ax.set_aspect("equal")
 
