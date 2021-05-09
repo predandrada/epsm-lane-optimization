@@ -182,6 +182,7 @@ def generate_shape():
 
     return shape
 
+
 # The path to the shape dir depends on your project structure
 # The current structure is:
 # |--shapes/

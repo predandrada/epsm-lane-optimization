@@ -7,15 +7,15 @@ import mosek
 from lanes_generator import plot_shape, read_shape
 from more_itertools import distinct_combinations
 
-de = 1.0  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
-dt = 0.75  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
+de = 0.5  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
+dt = 3/4 * math.pi  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
 theta_e = math.pi  # Expected angle between two adjacent edges; setting it to pi proved to be effective
 theta_t = 3 / 4 * math.pi  # TODO Maybe it should be changed too
-ws = 2  # Spacing weight #TODO This should be changed too
+ws = 10  # Spacing weight #TODO This should be changed too
 wt = 10  # Angle cost weight #TODO this should be changed too
-wb = 15  # Uniform benefit of adding an edge
-s_crit = 1  # Maximum allowed spacing cost   #TODO This should be changed too
-t_crit = 1  # Maximum allowed angle cost   #TODO This should be changed too
+wb = 5  # Uniform benefit of adding an edge
+s_crit = 10  # Maximum allowed spacing cost   #TODO This should be changed too
+t_crit = 10  # Maximum allowed angle cost   #TODO This should be changed too
 dmin = 1  # Minimum width #TODO check if this is valid for our case
 d_near = 1.3  # Necessary for endpoint distance constraints #TODO check other values
 
@@ -459,11 +459,8 @@ def main():
     else:
         shape = read_shape('../shapes/shape_0')
 
-    # plot_shape(shape)
-
     # Cannot insert all the cones because it runs very slow
     cones = get_cones(shape)[10:NUM_CONES+10]
-    # print(cones)
 
     a = lane_detection(cones)  # What should be called in the end to obtain the result
 
