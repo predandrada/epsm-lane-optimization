@@ -8,7 +8,7 @@ from lanes_generator import plot_shape, read_shape
 from more_itertools import distinct_combinations
 
 de = 0.5  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
-dt = 3/4 * math.pi  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
+dt = 1.25  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
 theta_e = math.pi  # Expected angle between two adjacent edges; setting it to pi proved to be effective
 theta_t = 3 / 4 * math.pi  # TODO Maybe it should be changed too
 ws = 10  # Spacing weight #TODO This should be changed too
