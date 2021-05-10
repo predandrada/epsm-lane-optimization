@@ -4,26 +4,24 @@ The repository contains a custom implementation of [this](https://static1.square
 
 ## Structure 
 The project is structured into three main modules: 
-1. _**lanes_generator.py**_: the module is used to create random Formula One tracks with cones on each side
-2. _**performance.py**_: used to check the behaviour of the algorithm on given tests
-3. _**boundary_detection.py**_: receives a given track and performs The
+1. [lanes_generator.py](src/lanes_generator.py): the module is used to create random Formula One tracks with cones on each side
+2. [performance.py](src/performance.py): used to check the behaviour of the algorithm on given tests
+3. [boundary_detection.py](src/boundary_detection.py): receives a given track and performs The
 Robust Lane Detection optimization (RLD) on it
 
 ## Usage 
-In _lanes_generator.py_, a random track will be generated. If you want to save the shape,
-answer `yes` in the terminal. The shape will automatically be saved in the
-_shapes_ directory.
+_lanes_generator.py_ creates a random track which can be saved by answering `yes` when prompted after running the module. 
+The default save location is the [shapes](shapes/) directory.
 
-In _boundary_detection.py_, write in the terminal the index
-of the shape you would like to load. Simply write a numeric value (such as `0`, for shape 0) to load
-the desired shape. The algorithm will compute the boundary and show it in a plot. 
+To run _boundary_detection.py_ on a certain track, write in the terminal the index
+of the shape you would like to load (a numeric value, e.g. `0`, for shape_0). The algorithm will compute the boundary and show it in a plot. 
 
 ## The Robust Lane Detection optimization
 The algorithm provides a solution to real-time lane detection, in the context of the Formula Student
 Driverless racecar competition. \
 We represent the boundaries of the lane with an undirected graph _G(V, E)_ where the vertices V are the set
 of observed cones, including false positives, and E is the set of edges connecting cones that are adjacent
-to each other. The overall strategy is to solve a **constrained binary integer program** to and the adjacency
+to each other. The overall strategy is to solve a **constrained binary integer program** to find the adjacency
 matrix, A, of the lane graph that is optimal with respect to a specified cost function. \
 The binary integer optimization problem was modelled using [cvxpy](https://www.cvxpy.org/), a Python-embedded modeling language for convex optimization problems.
 The solver used was [Mosek](https://www.mosek.com/).
