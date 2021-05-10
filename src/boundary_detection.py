@@ -394,7 +394,7 @@ def lane_detection(cones):
 
                         pA, pB, min_dist = MinDist(cones[i], cones[j], cones[k], cones[l])
 
-                        if (pA is not None and pB is not None):
+                        if pA is not None and pB is not None:
                             if min_dist != 0:
                                 pA = pA[:2]
                                 pB = pB[:2]
