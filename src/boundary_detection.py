@@ -21,6 +21,7 @@ d_near = 1.3  # Necessary for endpoint distance constraints #TODO check other va
 
 NUM_CONES = 12  # Bubuie daca e mai mare de 10 si nu stiu de ce
 
+
 ## Returns the coordinates of the center of an edge
 def line_center(ci, cj):
     return [(ci[0] + cj[0]) * 0.5, (ci[1] + cj[1]) * 0.5]
@@ -160,7 +161,6 @@ def angle(c1, c2, c3):
 def compute_distance_matrix(cones):
     n = len(cones)
     D = np.zeros((n, n))
-    # The issue was because of the zip :).
     for i in range(n):
         for j in range(n):
             D[i][j] = euclidean_distance(cones[i], cones[j])
@@ -203,7 +203,7 @@ def powerset(s):
 # Returns the minimum distance between 2 segments. Used in Pairwise Edge Constraints
 # Taken from https://stackoverflow.com/questions/2824478/shortest-distance-between-two-line-segments
 def MinDist(a0, a1, b0, b1, clampAll=True, clampA0=True, clampA1=True, clampB0=True,
-                                clampB1=True):
+            clampB1=True):
     ''' Given two lines defined by numpy.array pairs (a0,a1,b0,b1)
         Return the closest points on each segment and their distance
     '''
@@ -394,12 +394,13 @@ def lane_detection(cones):
 
                         pA, pB, min_dist = MinDist(cones[i], cones[j], cones[k], cones[l])
 
-                        if min_dist != 0:
-                            pA = pA[:2]
-                            pB = pB[:2]
+                        if (pA is not None and pB is not None):
+                            if min_dist != 0:
+                                pA = pA[:2]
+                                pB = pB[:2]
 
-                            if min_dist > dmin and End(pA, pB, cones[i], cones[j], cones[k], cones[l]) == 0:
-                                constraints.append(a[ij] + a[kl] <= 1)
+                                if min_dist > dmin and End(pA, pB, cones[i], cones[j], cones[k], cones[l]) == 0:
+                                    constraints.append(a[ij] + a[kl] <= 1)
 
     problem = cp.Problem(objective, constraints)
     problem.solve(solver=cp.MOSEK)
@@ -411,11 +412,10 @@ def lane_detection(cones):
     return np.copy(a.value)
 
 
-def plot_boundary(a, shape):
+def plot_boundary(a, shape, cones):
     fig, ax = plt.subplots()
     ax.set_aspect("equal")
 
-    cones = get_cones(shape)[10:NUM_CONES+10]
     n = len(cones)
 
     for j in range(n):
@@ -460,11 +460,11 @@ def main():
         shape = read_shape('../shapes/shape_0')
 
     # Cannot insert all the cones because it runs very slow
-    cones = get_cones(shape)[10:NUM_CONES+10]
+    cones = get_cones(shape)[10:NUM_CONES + 10]
 
     a = lane_detection(cones)  # What should be called in the end to obtain the result
 
-    plot_boundary(a, shape)
+    plot_boundary(a, shape, cones)
 
 
 if __name__ == "__main__":
