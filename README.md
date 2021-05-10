@@ -28,4 +28,7 @@ matrix, A, of the lane graph that is optimal with respect to a specified cost fu
 The binary integer optimization problem was modelled using [cvxpy](https://www.cvxpy.org/), a Python-embedded modeling language for convex optimization problems.
 The solver used was [Mosek](https://www.mosek.com/).
 
+## Results 
+An example of the result obtained for a random track is given in the following image:
+![lanes_0](https://user-images.githubusercontent.com/48925470/117624636-ca6b7380-b17d-11eb-8d7c-60c8f265e4ea.png)
 
