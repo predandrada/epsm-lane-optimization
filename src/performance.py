@@ -40,10 +40,10 @@ def points_generator():
 def resize_lane(coordinates, width):
     lane = []
 
-    for i in range(START, len(coordinates), STEP):
+    for i in range(0, len(coordinates), STEP):
         tmp = coordinates[i]
         # first edge
-        if i > START + OVERLAP_SPACING and i <= 25 - OVERLAP_SPACING:
+        if i > OVERLAP_SPACING and i <= 25 - OVERLAP_SPACING:
             lane.append((tmp[0] + width, tmp[1]))
         # second edge
         elif i > 25 and i < 50 - OVERLAP_SPACING:
