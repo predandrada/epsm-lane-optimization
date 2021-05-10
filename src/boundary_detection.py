@@ -3,9 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import math
-import mosek
 from lanes_generator import plot_shape, read_shape
-from more_itertools import distinct_combinations
 
 de = 0.5  # Expected spacing between cones #TODO Should be changed based on the rules of the competition
 dt = 1.25  # Tunable threshold parameter #TODO Should be changed based on the real expected spacing
@@ -446,6 +444,7 @@ def plot_boundary(a, shape, cones):
     plt.show()
 
 
+
 def main():
     shapes = glob.glob('../shapes/shape_*')
     shapes_counter = len(shapes)
@@ -463,7 +462,6 @@ def main():
     cones = get_cones(shape)[10:NUM_CONES + 10]
 
     a = lane_detection(cones)  # What should be called in the end to obtain the result
-
     plot_boundary(a, shape, cones)
 
 

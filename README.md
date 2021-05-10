@@ -5,7 +5,7 @@ The repository contains a custom implementation of [this](https://static1.square
 ## Structure 
 The project is structured into three main modules: 
 1. [lanes_generator.py](src/lanes_generator.py): the module is used to create random Formula One tracks with cones on each side
-2. [performance.py](src/performance.py): used to check the behaviour of the algorithm on given tests
+2. [rectangle_performance.py](src/performance.py): used to check the behaviour of the algorithm on given tests
 3. [boundary_detection.py](src/boundary_detection.py): receives a given track and performs The
 Robust Lane Detection optimization (RLD) on it
 
